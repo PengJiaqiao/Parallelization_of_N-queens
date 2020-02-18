@@ -2,7 +2,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
-#include <stack>
+#include <queue>
 #include <atomic>
 #include <memory>
 #include <mutex>
@@ -59,14 +59,14 @@ public:
     }
 };
 
-//任务栈
+//任务队列
 class taskPool
 {
 private:
     int nThread;
     vector<thread> threads;
     mutable spinMutex mtx;
-    stack<shared_ptr<task>> s;
+    queue<shared_ptr<task>> que;
 
     taskPool()
     {
@@ -75,10 +75,10 @@ private:
     bool pop(shared_ptr<task> &task)
     {
         lock_guard<spinMutex> lk(mtx);
-        if (s.empty())
+        if (que.empty())
             return false;
-        task = s.top();
-        s.pop();
+        task = que.front();
+        que.pop();
         return true;
     }
 
@@ -100,8 +100,8 @@ public:
     void clear()
     {
         lock_guard<spinMutex> lk(mtx);
-        while (s.size() > 0)
-            s.pop();
+        while (que.size() > 0)
+            que.pop();
         threads.clear();
     }
 
@@ -109,17 +109,17 @@ public:
     bool empty() const
     {
         lock_guard<spinMutex> lk(mtx);
-        return s.empty();
+        return que.empty();
     }
 
-    //获取队列深度
+    //获取队列长度
     size_t size() const
     {
         lock_guard<spinMutex> lk(mtx);
-        return s.size();
+        return que.size();
     }
 
-    //获取任务线程线
+    //获取任务线程数
     int getThreads() const
     {
         return nThread;
@@ -129,7 +129,7 @@ public:
     void push(const shared_ptr<task> &task)
     {
         lock_guard<spinMutex> lk(mtx);
-        s.push(task);
+        que.push(task);
     }
 
     //启动任务栈(启动处理线程)
@@ -260,6 +260,8 @@ int main(int argc, char **argv)
 }
 
 /*
+./main 8
+
 n = 1, result = 1, Total time:0.146002
 
 n = 2, result = 0, Total time:0.100318
